@@ -17,3 +17,13 @@ output "target_group_arn_suffix" {
   description = "Target group ARN suffix for CloudWatch metrics"
   value       = aws_lb_target_group.app.arn_suffix
 }
+
+output "ecr_repository_url" {
+  description = "ECR repository URL"
+  value       = aws_ecr_repository.app.repository_url
+}
+
+output "load_balancer_dns" {
+  description = "Application Load Balancer DNS name"
+  value       = aws_lb.main.dns_name
+}
