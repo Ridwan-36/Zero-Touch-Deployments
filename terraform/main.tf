@@ -17,6 +17,7 @@ module "compute" {
   source = "./modules/compute"
 
   project_name          = var.project_name
+  image_tag             = var.image_tag
   aws_region            = var.aws_region
   vpc_id                = module.networking.vpc_id
   public_subnet_ids     = module.networking.public_subnet_ids

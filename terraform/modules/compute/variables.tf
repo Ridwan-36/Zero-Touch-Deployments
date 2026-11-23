@@ -39,3 +39,10 @@ variable "vpc_id" {
   description = "VPC ID for the ALB target group"
   type        = string
 }
+
+
+variable "image_tag" {
+  description = "Docker image tag deployed to ECS"
+  type        = string
+  default     = "latest"
+}
