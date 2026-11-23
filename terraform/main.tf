@@ -26,4 +26,8 @@ module "compute" {
 
 module "monitoring" {
   source = "./modules/monitoring"
+
+  project_name = var.project_name
+  cluster_name = module.compute.ecs_cluster_name
+  service_name = module.compute.ecs_service_name
 }
