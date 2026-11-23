@@ -15,6 +15,13 @@ module "security" {
 
 module "compute" {
   source = "./modules/compute"
+
+  project_name          = var.project_name
+  aws_region            = var.aws_region
+  vpc_id                = module.networking.vpc_id
+  public_subnet_ids     = module.networking.public_subnet_ids
+  alb_security_group_id = module.security.alb_security_group_id
+  ecs_security_group_id = module.security.ecs_security_group_id
 }
 
 module "monitoring" {
