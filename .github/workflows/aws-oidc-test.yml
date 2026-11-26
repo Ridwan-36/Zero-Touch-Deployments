@@ -44,3 +44,11 @@ jobs:
 
       - name: Verify AWS identity
         run: aws sts get-caller-identity
+
+      - name: Inspect existing project ECR repositories
+        run: |
+          echo "========== PROJECT ECR REPOSITORIES =========="
+          aws ecr describe-repositories \
+            --region ap-south-1 \
+            --query "repositories[?starts_with(repositoryName, 'zero-touch-deployments-')].[repositoryName,repositoryUri]" \
+            --output table
