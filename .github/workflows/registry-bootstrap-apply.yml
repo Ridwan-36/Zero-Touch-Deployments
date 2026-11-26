@@ -1,0 +1,101 @@
+name: Apply Approved Staging ECR Plan
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - .github/workflows/registry-bootstrap-apply.yml
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: staging-registry-apply
+  cancel-in-progress: false
+
+jobs:
+  apply-registry:
+    if: github.event.head_commit.message == 'APPLY_STAGING_REGISTRY_PLAN_45852619473'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+
+      - name: Download Approved Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-registry-terraform-plan
+          run-id: 45852619473
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: terraform/registry-bootstrap
+
+      - name: Initialize Remote Backend
+        run: |
+          terraform -chdir=terraform/registry-bootstrap init \
+            -input=false \
+            -backend-config="bucket=zero-touch-deployments-tfstate-301949382920" \
+            -backend-config="key=zero-touch-deployments/registry-bootstrap.tfstate" \
+            -backend-config="region=ap-south-1" \
+            -backend-config="encrypt=true" \
+            -backend-config="dynamodb_table=zero-touch-deployments-terraform-locks" \
+            -backend-config="use_lockfile=true"
+
+      - name: Select Staging Workspace
+        run: terraform -chdir=terraform/registry-bootstrap workspace select staging
+
+      - name: Verify Approved Plan
+        run: |
+          cd terraform/registry-bootstrap
+          test -s registry.tfplan
+          terraform show -json registry.tfplan > /tmp/registry-plan.json
+          python3 - <<'PY'
+          import json
+          with open("/tmp/registry-plan.json") as f:
+              plan = json.load(f)
+          changes = [
+              r for r in plan.get("resource_changes", [])
+              if r.get("change", {}).get("actions") != ["no-op"]
+          ]
+          assert len(changes) == 1, f"Unexpected resource changes: {len(changes)}"
+          resource = changes[0]
+          assert resource["address"] == "module.registry.aws_ecr_repository.app"
+          assert resource["change"]["actions"] == ["create"]
+          assert resource["change"]["after"]["name"] == "zero-touch-deployments-staging"
+          print("APPROVED PLAN VERIFIED: exactly one ECR repository creation.")
+          PY
+
+      - name: Apply Approved Plan
+        run: |
+          terraform -chdir=terraform/registry-bootstrap apply \
+            -input=false \
+            -lock-timeout=5m \
+            -auto-approve \
+            registry.tfplan
+
+      - name: Verify ECR Repository
+        run: |
+          aws ecr describe-repositories \
+            --repository-names zero-touch-deployments-staging \
+            --region ap-south-1 \
+            --query 'repositories[0].[repositoryName,repositoryUri,imageScanningConfiguration.scanOnPush]' \
+            --output table
