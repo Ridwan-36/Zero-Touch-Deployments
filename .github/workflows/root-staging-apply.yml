@@ -57,7 +57,7 @@ jobs:
 
           terraform show -no-color staging.tfplan | tee plan.txt
 
-          grep -Fq "Plan: 6 to add, 0 to change, 0 to destroy." plan.txt || {
+          grep -Fq "Plan: 5 to add, 0 to change, 2 to destroy." plan.txt || {
             echo "Plan differs from approved plan. Apply stopped."
             exit 1
           }
