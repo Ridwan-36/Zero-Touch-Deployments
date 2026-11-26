@@ -78,6 +78,24 @@ jobs:
       - name: Initialize state bootstrap
         run: terraform -chdir=terraform/state-bootstrap init -backend=false -input=false
 
+      - name: Recover existing backend resources in Terraform state
+        run: |
+          set -e
+          DIR="terraform/state-bootstrap"
+
+          echo "========== REMOVE INCORRECT TAINT FLAGS =========="
+          terraform -chdir="$DIR" state untaint aws_s3_bucket.terraform_state
+          terraform -chdir="$DIR" state untaint aws_dynamodb_table.terraform_locks
+
+          echo "========== IMPORT EXISTING S3 CONFIGURATIONS =========="
+          terraform -chdir="$DIR" import aws_s3_bucket_ownership_controls.terraform_state zero-touch-deployments-tfstate-301949382920
+          terraform -chdir="$DIR" import aws_s3_bucket_public_access_block.terraform_state zero-touch-deployments-tfstate-301949382920
+          terraform -chdir="$DIR" import aws_s3_bucket_server_side_encryption_configuration.terraform_state zero-touch-deployments-tfstate-301949382920
+          terraform -chdir="$DIR" import aws_s3_bucket_versioning.terraform_state zero-touch-deployments-tfstate-301949382920
+
+          echo "========== RECOVERED TERRAFORM STATE =========="
+          terraform -chdir="$DIR" state list
+
       - name: Review state bootstrap plan
         run: |
           terraform -chdir=terraform/state-bootstrap plan \
