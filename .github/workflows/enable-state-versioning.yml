@@ -1,6 +1,9 @@
 name: Enable Terraform State Versioning
 
 on:
+  push:
+    branches:
+      - staging
   workflow_dispatch:
 
 permissions:
