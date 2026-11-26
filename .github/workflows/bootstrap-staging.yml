@@ -54,6 +54,22 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
+      - name: Inspect existing staging backend resources
+        run: |
+          set -e
+          echo "========== S3 BUCKET =========="
+          aws s3api head-bucket --bucket zero-touch-deployments-tfstate-301949382920
+          echo "========== S3 VERSIONING =========="
+          aws s3api get-bucket-versioning --bucket zero-touch-deployments-tfstate-301949382920
+          echo "========== S3 ENCRYPTION =========="
+          aws s3api get-bucket-encryption --bucket zero-touch-deployments-tfstate-301949382920
+          echo "========== S3 PUBLIC ACCESS =========="
+          aws s3api get-public-access-block --bucket zero-touch-deployments-tfstate-301949382920
+          echo "========== S3 OWNERSHIP =========="
+          aws s3api get-bucket-ownership-controls --bucket zero-touch-deployments-tfstate-301949382920
+          echo "========== DYNAMODB TABLE =========="
+          aws dynamodb describe-table --table-name zero-touch-deployments-terraform-locks --query 'Table.{Name:TableName,Status:TableStatus,KeySchema:KeySchema,BillingMode:BillingModeSummary.BillingMode}' --output json
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
