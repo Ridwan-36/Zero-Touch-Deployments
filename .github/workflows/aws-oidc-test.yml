@@ -68,3 +68,12 @@ jobs:
             --region ap-south-1 \
             --query "repositories[?starts_with(repositoryName, 'zero-touch-deployments-')].[repositoryName,repositoryUri]" \
             --output table
+
+      - name: Verify Staging ECS Service
+        run: |
+          aws ecs describe-services \
+            --cluster zero-touch-deployments-staging-cluster \
+            --services zero-touch-deployments-staging-service \
+            --region ap-south-1 \
+            --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Pending:pendingCount}' \
+            --output table
