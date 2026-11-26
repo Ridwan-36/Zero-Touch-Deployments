@@ -1,0 +1,43 @@
+name: Enable Terraform State Versioning
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  enable-versioning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+
+      - name: Enable S3 Versioning
+        run: |
+          set -euo pipefail
+          BUCKET="zero-touch-deployments-tfstate-301949382920"
+
+          STATUS=$(aws s3api get-bucket-versioning \
+            --bucket "$BUCKET" \
+            --region ap-south-1 \
+            --query Status --output text)
+
+          if [ "$STATUS" != "Enabled" ]; then
+            aws s3api put-bucket-versioning \
+              --bucket "$BUCKET" \
+              --region ap-south-1 \
+              --versioning-configuration Status=Enabled
+          fi
+
+          FINAL=$(aws s3api get-bucket-versioning \
+            --bucket "$BUCKET" \
+            --region ap-south-1 \
+            --query Status --output text)
+
+          echo "FINAL VERSIONING STATUS: $FINAL"
+          test "$FINAL" = "Enabled"
