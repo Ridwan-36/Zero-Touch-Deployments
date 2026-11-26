@@ -48,8 +48,8 @@ jobs:
       - name: Verify Staging ECS Service
         run: |
           aws ecs describe-services \
-            --cluster ztd-staging-cluster \
-            --services ztd-staging-service \
+            --cluster zero-touch-deployments-staging-cluster \
+            --services zero-touch-deployments-staging-service \
             --region ap-south-1 \
             --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Pending:pendingCount}' \
             --output table
