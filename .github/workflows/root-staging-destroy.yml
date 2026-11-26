@@ -1,0 +1,36 @@
+name: Root Staging Destroy
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+      - name: Review and destroy approved staging resources
+        run: |
+          set -euo pipefail
+          cd terraform
+          terraform init \
+            -backend-config="bucket=zero-touch-deployments-tfstate-301949382920" \
+            -backend-config="key=zero-touch-deployments/terraform.tfstate" \
+            -backend-config="region=ap-south-1" \
+            -backend-config="dynamodb_table=zero-touch-deployments-terraform-locks" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+          terraform workspace select staging
+          terraform plan -destroy \
+            -var-file=environments/staging/terraform.tfvars.example \
+            -out=staging-destroy.tfplan
+          terraform show -no-color staging-destroy.tfplan | tee destroy-plan.txt
+          grep -Fq "Plan: 0 to add, 0 to change, 23 to destroy." destroy-plan.txt
+          terraform apply -auto-approve staging-destroy.tfplan
