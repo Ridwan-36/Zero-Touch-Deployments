@@ -48,8 +48,8 @@ jobs:
       - name: Verify Staging ECS Service
         run: |
           aws ecs describe-services \
-            --cluster zero-touch-deployments-staging-cluster \
-            --services zero-touch-deployments-staging-service \
+            --cluster ztd-staging-cluster \
+            --services ztd-staging-service \
             --region ap-south-1 \
             --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Pending:pendingCount}' \
             --output table
@@ -59,7 +59,7 @@ jobs:
         run: |
           ALB_DNS=$(aws elbv2 describe-load-balancers \
             --region ap-south-1 \
-            --query "LoadBalancers[?contains(LoadBalancerName, 'zero-touch-deployments-staging')].DNSName | [0]" \
+            --query "LoadBalancers[?contains(LoadBalancerName, 'ztd-staging')].DNSName | [0]" \
             --output text)
 
           if [ -z "$ALB_DNS" ] || [ "$ALB_DNS" = "None" ]; then
