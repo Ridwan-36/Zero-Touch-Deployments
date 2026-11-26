@@ -53,3 +53,30 @@ jobs:
             --region ap-south-1 \
             --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Pending:pendingCount}' \
             --output table
+
+      - name: Verify Staging Application HTTP Health
+        shell: bash
+        run: |
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --region ap-south-1 \
+            --query "LoadBalancers[?contains(LoadBalancerName, 'zero-touch-deployments-staging')].DNSName | [0]" \
+            --output text)
+
+          if [ -z "$ALB_DNS" ] || [ "$ALB_DNS" = "None" ]; then
+            echo "Staging ALB not found"
+            exit 1
+          fi
+
+          echo "Application URL: http://$ALB_DNS"
+
+          for attempt in {1..12}; do
+            if curl -fsS "http://$ALB_DNS/" -o /tmp/app-response.html; then
+              echo "HTTP health check: SUCCESS"
+              head -c 300 /tmp/app-response.html
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "HTTP health check failed"
+          exit 1
