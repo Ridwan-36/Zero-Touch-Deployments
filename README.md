@@ -201,6 +201,33 @@ The intended remote state configuration uses:
 
 Bootstrap resources have not been provisioned.
 
+### Bootstrap order and workspace mapping
+
+Do not run terraform apply until AWS cost eligibility is verified and explicit authorization is given.
+
+1. Initialize terraform/state-bootstrap with its local backend. Review its plan for the S3 bucket and DynamoDB locking table.
+2. After the state backend exists, configure terraform/registry-bootstrap/backend.hcl using its example file and initialize the remote backend.
+3. Create dev, staging, and prod workspaces in the registry-bootstrap configuration. Review each workspace plan. ECR repository names use the pattern project_name-workspace.
+4. Configure terraform/backend.hcl using the same state bucket and lock table. Initialize the root Terraform configuration.
+5. Create dev, staging, and prod workspaces separately in the root configuration. Select the required workspace and use its matching environment variables example.
+
+| Environment | Workspace | ECR repository |
+|---|---|---|
+| Dev | dev | zero-touch-deployments-dev |
+| Staging | staging | zero-touch-deployments-staging |
+| Production | prod | zero-touch-deployments-prod |
+
+Workspaces belong to individual Terraform backend configurations. Creating a workspace in registry-bootstrap does not create it in the root configuration.
+
+Example staging plan review (after backend setup):
+
+    terraform -chdir=terraform/registry-bootstrap workspace select staging
+    terraform -chdir=terraform/registry-bootstrap plan
+    terraform -chdir=terraform workspace select staging
+    terraform -chdir=terraform plan -var-file=environments/staging/terraform.tfvars.example
+
+Use the corresponding dev or prod variables file for those environments. Plan review does not provision resources.
+
 Remote backend initialization and bootstrap apply must only happen after AWS cost verification and explicit authorization.
 
 ## 9. GitHub Actions Pipeline
