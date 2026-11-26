@@ -18,6 +18,21 @@ jobs:
           role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
           aws-region: ap-south-1
 
+      - name: Ensure ECS service-linked role exists
+        run: |
+          set +e
+          output=$(aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>&1)
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "$output"
+          elif echo "$output" | grep -qi "has been taken\|already exists"; then
+            echo "ECS service-linked role already exists."
+          else
+            echo "$output"
+            exit "$status"
+          fi
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.17.2
