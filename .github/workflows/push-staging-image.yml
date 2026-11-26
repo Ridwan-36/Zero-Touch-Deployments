@@ -1,0 +1,66 @@
+name: Build and Push Staging Docker Image
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - .github/workflows/push-staging-image.yml
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staging-ecr-image-push
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    if: github.event.head_commit.message == 'PUSH_STAGING_DOCKER_IMAGE'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+
+      - name: Verify AWS Identity and ECR
+        run: |
+          aws sts get-caller-identity
+          aws ecr describe-repositories \
+            --repository-names zero-touch-deployments-staging \
+            --region ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          ECR_URI="$ECR_REGISTRY/zero-touch-deployments-staging"
+          docker build -t "$ECR_URI:staging" ./app
+          docker image inspect "$ECR_URI:staging"
+
+      - name: Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          ECR_URI="$ECR_REGISTRY/zero-touch-deployments-staging"
+          docker push "$ECR_URI:staging"
+
+      - name: Verify Uploaded Image
+        run: |
+          aws ecr describe-images \
+            --repository-name zero-touch-deployments-staging \
+            --image-ids imageTag=staging \
+            --region ap-south-1 \
+            --query 'imageDetails[0].[imageTags[0],imageDigest,imageSizeInBytes]' \
+            --output table
