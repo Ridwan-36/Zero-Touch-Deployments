@@ -48,10 +48,18 @@ jobs:
       - name: Inspect Terraform State Bucket Versioning
         run: |
           echo "========== S3 STATE BUCKET VERSIONING =========="
-          aws s3api get-bucket-versioning \
+          STATUS=$(aws s3api get-bucket-versioning \
             --bucket zero-touch-deployments-tfstate-301949382920 \
             --region ap-south-1 \
-            --output json
+            --query 'Status' --output text)
+
+          if [ "$STATUS" = "Enabled" ]; then
+            echo "VERSIONING STATUS: Enabled"
+          elif [ "$STATUS" = "Suspended" ]; then
+            echo "VERSIONING STATUS: Suspended"
+          else
+            echo "VERSIONING STATUS: Not enabled"
+          fi
 
       - name: Inspect existing project ECR repositories
         run: |
