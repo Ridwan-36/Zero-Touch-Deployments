@@ -1,0 +1,33 @@
+name: Inspect Terraform Remote State
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Inspect remote Terraform state keys
+        run: |
+          set -euo pipefail
+          BUCKET="zero-touch-deployments-tfstate-301949382920"
+
+          echo "========== S3 OBJECT METADATA =========="
+          aws s3api list-objects-v2 \
+            --bucket "$BUCKET" \
+            --region ap-south-1 \
+            --query 'Contents[].{Key:Key,Size:Size,LastModified:LastModified}' \
+            --output table
