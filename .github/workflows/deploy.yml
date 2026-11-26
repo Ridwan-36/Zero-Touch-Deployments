@@ -1,52 +1,30 @@
-
-name: Zero-Touch Deployment Pipeline
+name: AWS OIDC Authentication Test
 
 on:
   push:
     branches:
       - staging
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Deployment environment"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
-      image_tag:
-        description: "Docker image tag"
-        required: true
-        default: latest
-        type: string
 
 permissions:
   contents: read
-
-concurrency:
-  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
-  cancel-in-progress: false
+  id-token: write
 
 jobs:
-  deployment-check:
-    name: Deployment Configuration Check
+  aws-authentication:
+    name: Verify AWS OIDC Authentication
     runs-on: ubuntu-latest
 
     steps:
-      - name: Confirm AWS deployment remains disabled
-        run: |
-          echo "AWS deployment is intentionally disabled."
-          echo "Cost verification and OIDC setup are pending."
-          echo "No AWS resources will be created by this workflow."
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Validate deployment configuration
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Requested environment: ${{ inputs.environment }}"
-            echo "Requested image tag: ${{ inputs.image_tag }}"
-          else
-            echo "Requested environment: staging"
-            echo "Commit: $GITHUB_SHA"
-          fi
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+          role-session-name: GitHubActionsOIDCTest
 
-          echo "Configuration check completed."
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
