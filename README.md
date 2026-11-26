@@ -254,20 +254,23 @@ Checks:
 Workflow: `.github/workflows/deploy.yml`
 
 Currently supports:
-- Push to `staging`
+- Automatic execution on push to `staging`
 - Manual workflow dispatch
-- Staging and production environment selection
-- Image tag input
-- Deployment configuration checks
+- Terraform formatting, initialization and validation
+- TFLint checks
+- Docker image build test
+- Deployment readiness confirmation
 
-**Important:** This workflow is currently a safe validation-only workflow. It does not authenticate to AWS or deploy an application.
+**Important:** This workflow is intentionally in safe readiness mode. It does not create AWS resources, authenticate to AWS, publish images to ECR, or deploy to ECS.
 
 ### Current Workflow Limitations
 
-- The deployment workflow performs configuration checks only.
-- It does not deploy to staging or production.
-- GitHub environment branch restrictions exist, but required-reviewer approval is not configured.
-- AWS authentication, ECR image publishing, ECS deployment and automated rollback are not implemented in this workflow.
+- Staging and production application deployments are not yet implemented.
+- AWS OIDC authentication is tested separately in `.github/workflows/aws-oidc-test.yml`; the deployment workflow does not use it.
+- ECR image publishing and ECS deployment automation remain pending.
+- Production required-reviewer approval is not configured.
+- Automated deployment rollback has not yet been implemented or tested in GitHub Actions.
+- AWS infrastructure has not been provisioned.
 
 ### Intended Deployment Flow
 

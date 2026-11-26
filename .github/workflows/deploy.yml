@@ -1,0 +1,80 @@
+name: Zero-Touch Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+    inputs:
+      deploy_to_aws:
+        description: Enable AWS deployment (requires provisioned infrastructure and IAM permissions)
+        required: true
+        type: boolean
+        default: false
+      target_environment:
+        description: Deployment environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zero-touch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  terraform-checks:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format
+        run: terraform -chdir=terraform fmt -check -recursive
+
+      - name: Terraform Init
+        run: terraform -chdir=terraform init -backend=false -input=false
+
+      - name: Terraform Validate
+        run: terraform -chdir=terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Run TFLint
+        run: |
+          cd terraform
+          tflint --init
+          tflint --recursive
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t zero-touch-app:${{ github.sha }} ./app
+
+  deployment-readiness:
+    name: AWS Deployment Readiness
+    needs:
+      - terraform-checks
+      - docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm deployment remains disabled
+        run: |
+          echo "AWS deployment is intentionally disabled."
+          echo "Infrastructure provisioning and deployment require separate authorization."
+          echo "Terraform validation and Docker build checks completed successfully."
