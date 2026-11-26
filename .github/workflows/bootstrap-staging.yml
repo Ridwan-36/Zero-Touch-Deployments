@@ -1,0 +1,81 @@
+
+name: Bootstrap Staging AWS Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      state_run_id:
+        description: "Previous successful state-artifact run ID"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: staging-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    name: Recover and Verify Staging Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore previous Terraform state
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-state-bootstrap-tfstate
+          run-id: ${{ inputs.state_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          path: terraform/state-bootstrap
+          merge-multiple: true
+
+      - name: Verify recovered state
+        run: |
+          test -s terraform/state-bootstrap/terraform.tfstate
+          echo "========== RECOVERED RESOURCES =========="
+          jq -r '.resources[]? | [.type, .name] | @tsv' \
+            terraform/state-bootstrap/terraform.tfstate
+
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+          role-session-name: StagingBootstrapRecovery
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+
+      - name: Initialize state bootstrap
+        run: terraform -chdir=terraform/state-bootstrap init -backend=false -input=false
+
+      - name: Review state bootstrap plan
+        run: |
+          terraform -chdir=terraform/state-bootstrap plan \
+            -input=false \
+            -out=/tmp/state-bootstrap.tfplan
+
+          terraform -chdir=terraform/state-bootstrap show -no-color \
+            /tmp/state-bootstrap.tfplan
+
+      - name: Preserve recovered state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-state-bootstrap-tfstate
+          path: terraform/state-bootstrap/terraform.tfstate
+          if-no-files-found: warn
+          retention-days: 7
