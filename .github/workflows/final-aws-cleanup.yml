@@ -1,0 +1,66 @@
+name: Final AWS Cleanup
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+      - name: Cleanup project resources
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "301949382920"
+
+          BUCKET=zero-touch-deployments-tfstate-301949382920
+          TABLE=zero-touch-deployments-terraform-locks
+          REPO=zero-touch-deployments-staging
+
+          mkdir -p /tmp/cleanup-report
+
+          if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            aws s3api list-object-versions --bucket "$BUCKET" > /tmp/cleanup-report/s3-versions.json
+            jq '[.Versions[]?,.DeleteMarkers[]?] | map({Key,VersionId})' /tmp/cleanup-report/s3-versions.json > /tmp/objects.json
+            COUNT=$(jq length /tmp/objects.json)
+            echo "S3 versions/delete markers: $COUNT"
+            for ((i=0; i<COUNT; i+=1000)); do
+              jq --argjson s "$i" --argjson e "$((i+1000))" '{Objects: .[$s:$e], Quiet: true}' /tmp/objects.json > /tmp/batch.json
+              aws s3api delete-objects --bucket "$BUCKET" --delete file:///tmp/batch.json
+            done
+            aws s3api delete-bucket --bucket "$BUCKET"
+            echo "S3 bucket deleted"
+          else
+            echo "S3 bucket already absent"
+          fi
+
+          if aws dynamodb describe-table --table-name "$TABLE" >/dev/null 2>&1; then
+            aws dynamodb delete-table --table-name "$TABLE"
+            aws dynamodb wait table-not-exists --table-name "$TABLE"
+            echo "DynamoDB table deleted"
+          else
+            echo "DynamoDB table already absent"
+          fi
+
+          if aws ecr describe-repositories --repository-names "$REPO" >/dev/null 2>&1; then
+            aws ecr delete-repository --repository-name "$REPO" --force
+            echo "ECR repository deleted"
+          else
+            echo "ECR repository already absent"
+          fi
+
+          echo "=== LEFTOVER CHECK ==="
+          aws ecs list-clusters
+          aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `zero-touch-deployments`)].LoadBalancerName'
+          aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*zero-touch-deployments*" --query 'Vpcs[].VpcId'
+          aws logs describe-log-groups --log-group-name-prefix /ecs/zero-touch-deployments --query 'logGroups[].logGroupName'
+          aws kms describe-key --key-id 4bcf0d71-c343-470c-afe3-7ffbb7dedf96 --query 'KeyMetadata.{Manager:KeyManager,State:KeyState,Id:KeyId}' || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: final-aws-cleanup-report
+          path: /tmp/cleanup-report/
