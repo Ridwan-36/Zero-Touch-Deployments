@@ -1,3 +1,4 @@
+
 resource "aws_appautoscaling_target" "ecs" {
   max_capacity       = 6
   min_capacity       = 2
@@ -7,7 +8,7 @@ resource "aws_appautoscaling_target" "ecs" {
 }
 
 resource "aws_appautoscaling_policy" "cpu" {
-  name               = "${var.project_name}-cpu-scaling"
+  name               = "${var.project_name}-${terraform.workspace}-cpu-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
@@ -25,7 +26,7 @@ resource "aws_appautoscaling_policy" "cpu" {
 }
 
 resource "aws_appautoscaling_policy" "memory" {
-  name               = "${var.project_name}-memory-scaling"
+  name               = "${var.project_name}-${terraform.workspace}-memory-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
@@ -43,7 +44,7 @@ resource "aws_appautoscaling_policy" "memory" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
-  alarm_name          = "${var.project_name}-ecs-cpu-high"
+  alarm_name          = "${var.project_name}-${terraform.workspace}-ecs-cpu-high"
   alarm_description   = "Triggers when ECS service CPU utilization is high."
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
@@ -61,7 +62,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_memory_high" {
-  alarm_name          = "${var.project_name}-ecs-memory-high"
+  alarm_name          = "${var.project_name}-${terraform.workspace}-ecs-memory-high"
   alarm_description   = "Triggers when ECS service memory utilization is high."
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2

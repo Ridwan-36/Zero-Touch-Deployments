@@ -46,3 +46,8 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "ecr_repository_url" {
+  description = "Existing ECR repository URL for the ECS application"
+  type        = string
+}

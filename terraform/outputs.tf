@@ -1,3 +1,4 @@
+
 output "aws_region" {
   description = "Configured AWS region"
   value       = var.aws_region
@@ -10,7 +11,7 @@ output "deployment_environment" {
 
 output "ecr_repository_url" {
   description = "ECR repository URL"
-  value       = module.compute.ecr_repository_url
+  value       = data.aws_ecr_repository.app.repository_url
 }
 
 output "ecs_cluster_name" {

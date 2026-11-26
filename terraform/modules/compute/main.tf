@@ -1,27 +1,16 @@
-# Resources for this module will be added in the next implementation step.
 
-resource "aws_ecr_repository" "app" {
-  name                 = "${var.project_name}-${terraform.workspace}"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  encryption_configuration {
-    encryption_type = "AES256"
-  }
-}
-
+# ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-${terraform.workspace}-cluster"
 }
 
+# CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}-${terraform.workspace}"
   retention_in_days = 7
 }
 
+# ECS Task Execution Role
 data "aws_iam_policy_document" "ecs_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -43,16 +32,23 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Application Load Balancer
 resource "aws_lb" "main" {
-  name               = "${var.project_name}-${terraform.workspace}-alb"
+  name               = "ztd-${terraform.workspace}-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [var.alb_security_group_id]
   subnets            = var.public_subnet_ids
 }
 
+# VPC lookup
+data "aws_vpc" "selected" {
+  id = var.vpc_id
+}
+
+# ALB Target Group
 resource "aws_lb_target_group" "app" {
-  name        = "${var.project_name}-${terraform.workspace}-tg"
+  name        = "ztd-${terraform.workspace}-tg"
   port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.selected.id
@@ -68,10 +64,7 @@ resource "aws_lb_target_group" "app" {
   }
 }
 
-data "aws_vpc" "selected" {
-  id = var.vpc_id
-}
-
+# HTTP Listener
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
@@ -83,6 +76,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# ECS Task Definition
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.project_name}-${terraform.workspace}"
   network_mode             = "awsvpc"
@@ -94,7 +88,7 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([
     {
       name      = "app"
-      image     = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
+      image     = "${var.ecr_repository_url}:${var.image_tag}"
       essential = true
 
       portMappings = [
@@ -125,6 +119,7 @@ resource "aws_ecs_task_definition" "app" {
   ])
 }
 
+# ECS Service
 resource "aws_ecs_service" "app" {
   name            = "${var.project_name}-${terraform.workspace}-service"
   cluster         = aws_ecs_cluster.main.id

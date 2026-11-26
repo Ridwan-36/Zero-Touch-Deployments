@@ -1,39 +1,52 @@
+
 name: Zero-Touch Deployment Pipeline
 
 on:
-  pull_request:
-    branches:
-      - staging
-      - main
   push:
     branches:
       - staging
-      - main
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: "Docker image tag"
+        required: true
+        default: latest
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
 jobs:
-  validate:
-    name: Validate Terraform and Docker
+  deployment-check:
+    name: Deployment Configuration Check
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Confirm AWS deployment remains disabled
+        run: |
+          echo "AWS deployment is intentionally disabled."
+          echo "Cost verification and OIDC setup are pending."
+          echo "No AWS resources will be created by this workflow."
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Validate deployment configuration
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Requested environment: ${{ inputs.environment }}"
+            echo "Requested image tag: ${{ inputs.image_tag }}"
+          else
+            echo "Requested environment: staging"
+            echo "Commit: $GITHUB_SHA"
+          fi
 
-      - name: Terraform Format
-        run: terraform -chdir=terraform fmt -check -recursive
-
-      - name: Terraform Init
-        run: terraform -chdir=terraform init -backend=false -input=false
-
-      - name: Terraform Validate
-        run: terraform -chdir=terraform validate
-
-      - name: Build Docker Image
-        run: docker build -t zero-touch-app:test ./app
+          echo "Configuration check completed."

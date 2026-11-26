@@ -1,3 +1,8 @@
+
+data "aws_ecr_repository" "app" {
+  name = "${var.project_name}-${terraform.workspace}"
+}
+
 module "networking" {
   source = "./modules/networking"
 
@@ -18,6 +23,7 @@ module "compute" {
 
   project_name          = var.project_name
   image_tag             = var.image_tag
+  ecr_repository_url    = data.aws_ecr_repository.app.repository_url
   aws_region            = var.aws_region
   vpc_id                = module.networking.vpc_id
   public_subnet_ids     = module.networking.public_subnet_ids
