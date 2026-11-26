@@ -45,6 +45,14 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
+      - name: Inspect Terraform State Bucket Versioning
+        run: |
+          echo "========== S3 STATE BUCKET VERSIONING =========="
+          aws s3api get-bucket-versioning \
+            --bucket zero-touch-deployments-tfstate-301949382920 \
+            --region ap-south-1 \
+            --output json
+
       - name: Inspect existing project ECR repositories
         run: |
           echo "========== PROJECT ECR REPOSITORIES =========="
