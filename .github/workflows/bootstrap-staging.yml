@@ -84,8 +84,8 @@ jobs:
           DIR="terraform/state-bootstrap"
 
           echo "========== REMOVE INCORRECT TAINT FLAGS =========="
-          terraform -chdir="$DIR" state untaint aws_s3_bucket.terraform_state
-          terraform -chdir="$DIR" state untaint aws_dynamodb_table.terraform_locks
+          terraform -chdir="$DIR" untaint aws_s3_bucket.terraform_state
+          terraform -chdir="$DIR" untaint aws_dynamodb_table.terraform_locks
 
           echo "========== IMPORT EXISTING S3 CONFIGURATIONS =========="
           terraform -chdir="$DIR" import aws_s3_bucket_ownership_controls.terraform_state zero-touch-deployments-tfstate-301949382920
