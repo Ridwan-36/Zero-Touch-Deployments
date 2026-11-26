@@ -1,6 +1,9 @@
 name: Registry Bootstrap - Plan Only
 
 on:
+  push:
+    branches:
+      - staging
   workflow_dispatch:
 
 permissions:
