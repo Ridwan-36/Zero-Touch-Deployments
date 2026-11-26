@@ -1,0 +1,47 @@
+name: Root Staging Terraform Plan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+
+      - name: Terraform Plan Only
+        run: |
+          set -euo pipefail
+          cd terraform
+
+          terraform init \
+            -backend-config="bucket=zero-touch-deployments-tfstate-301949382920" \
+            -backend-config="key=zero-touch-deployments/terraform.tfstate" \
+            -backend-config="region=ap-south-1" \
+            -backend-config="dynamodb_table=zero-touch-deployments-terraform-locks" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+          terraform workspace select staging || terraform workspace new staging
+
+          terraform fmt -check -recursive
+          terraform validate
+
+          terraform plan \
+            -var-file=environments/staging/terraform.tfvars.example \
+            -out=staging.tfplan
+
+          terraform show -no-color staging.tfplan
