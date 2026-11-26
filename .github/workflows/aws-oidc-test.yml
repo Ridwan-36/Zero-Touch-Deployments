@@ -45,30 +45,6 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
-      - name: Inspect Terraform State Bucket Versioning
-        run: |
-          echo "========== S3 STATE BUCKET VERSIONING =========="
-          STATUS=$(aws s3api get-bucket-versioning \
-            --bucket zero-touch-deployments-tfstate-301949382920 \
-            --region ap-south-1 \
-            --query 'Status' --output text)
-
-          if [ "$STATUS" = "Enabled" ]; then
-            echo "VERSIONING STATUS: Enabled"
-          elif [ "$STATUS" = "Suspended" ]; then
-            echo "VERSIONING STATUS: Suspended"
-          else
-            echo "VERSIONING STATUS: Not enabled"
-          fi
-
-      - name: Inspect existing project ECR repositories
-        run: |
-          echo "========== PROJECT ECR REPOSITORIES =========="
-          aws ecr describe-repositories \
-            --region ap-south-1 \
-            --query "repositories[?starts_with(repositoryName, 'zero-touch-deployments-')].[repositoryName,repositoryUri]" \
-            --output table
-
       - name: Verify Staging ECS Service
         run: |
           aws ecs describe-services \
