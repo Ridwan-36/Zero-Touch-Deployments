@@ -1,0 +1,47 @@
+name: Root Staging Destroy Plan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  destroy-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::301949382920:role/GitHubActions-Staging-ZeroTouchDeployments
+          aws-region: ap-south-1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+
+      - name: Generate Destroy Plan Only
+        run: |
+          set -euo pipefail
+          cd terraform
+          terraform init \
+            -backend-config="bucket=zero-touch-deployments-tfstate-301949382920" \
+            -backend-config="key=zero-touch-deployments/terraform.tfstate" \
+            -backend-config="region=ap-south-1" \
+            -backend-config="dynamodb_table=zero-touch-deployments-terraform-locks" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+          terraform workspace select staging
+          terraform plan -destroy \
+            -var-file=environments/staging/terraform.tfvars.example \
+            -out=staging-destroy.tfplan
+          terraform show -no-color staging-destroy.tfplan | tee destroy-plan.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-destroy-plan
+          path: |
+            terraform/staging-destroy.tfplan
+            terraform/destroy-plan.txt
