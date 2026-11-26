@@ -15,7 +15,7 @@ The objective is to reduce manual deployment operations and establish a repeatab
 - Deploy containerized applications to Amazon ECS.
 - Monitor application health and support deployment rollback.
 
-> **Current implementation status:** Terraform and Docker CI checks are implemented. The deployment workflow currently performs configuration checks only. AWS deployment, ECR publishing, ECS updates, and rollback execution remain disabled pending cost review and explicit authorization.
+> **Current status:** Staging deployed successfully; ECS 2/2 tasks running and ALB health check passed. Production deployment is not verified. ECS rollback is configured, but the 60-second target is untested.
 
 ## 2. Architecture
 
@@ -401,8 +401,8 @@ The project is being prepared with the intention of staying within the user's av
 | Remote state bootstrap configuration | Prepared |
 | ECR bootstrap configuration | Prepared |
 | README documentation | Prepared and reviewed |
-| Actual AWS deployment | Disabled |
-| Production approval gate | Pending |
+| Staging AWS deployment | Deployed and health-checked |
+| Production approval gate | Not verified |
 | Automatic rollback test | Pending |
 | Verified AWS cost estimate | Pending |
 
